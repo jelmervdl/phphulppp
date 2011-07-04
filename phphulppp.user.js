@@ -19,7 +19,12 @@
 
 (function() {
 	
-	var version = '0.12.3';
+	if (document.body && document.body.classList.contains('phphulppp'))
+		return;
+	
+	document.body.classList.add('phphulppp');
+	
+	var version = '0.12.4';
 	
 	var Colors = {
 		Blue: '#465CB1',
