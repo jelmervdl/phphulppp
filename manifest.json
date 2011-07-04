@@ -1,0 +1,13 @@
+{
+   "content_scripts": [ {
+      "exclude_globs": [ "http://*.phphulp.nl/includes/ads/*" ],
+      "include_globs": [ "http://*.phphulp.nl/*", "http://phphulp.nl/*" ],
+      "js": [ "phphulppp.user.js" ],
+      "matches": [ "http://*/*", "https://*/*" ]
+   } ],
+   "converted_from_user_script": true,
+   "description": "Markeert per topic welke posts nieuw zijn, geeft je de mogelijkheid dingen als favoriet te markeren, en",
+   "key": "QFdll1t5G8C9ZaH7Ps57qvvWmDngtkusDCX5c/XO5bg=",
+   "name": "PHPHulp++",
+   "version": "0.12.4"
+}
