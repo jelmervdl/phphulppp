@@ -5,7 +5,7 @@
 // @include			http://*.phphulp.nl/*
 // @include			http://phphulp.nl/*
 // @exclude			http://*.phphulp.nl/includes/ads/*
-// @version			0.12.3
+// @version			0.12.5
 // ==/UserScript==
 
 // lounge_topics_in_recent_menu (default=true)
@@ -24,7 +24,7 @@
 	
 	document.body.classList.add('phphulppp');
 	
-	var version = '0.12.4';
+	var version = '0.12.5';
 	
 	var Colors = {
 		Blue: '#465CB1',
@@ -124,6 +124,10 @@
 	
 	Types.equal = function(left, right) {
 		return left.type == right.type && left.id == right.id;
+	}
+
+	function _alwaysTrue() {
+		return true;
 	}
 	
 	function stackdump()
@@ -282,11 +286,17 @@
 		return element;
 	}
 	
-	function forEach(elements, block)
+	function forEach(elements, check, block)
 	{
+		if (typeof block === 'undefined') {
+			block = check;
+			check = _alwaysTrue;
+		}
+		
 		if(iterable(elements)) {
 			for(var i = 0; i < elements.length; ++i) {
-				block(elements[i], i);
+				if (check(elements[i], i))
+					block(elements[i], i);
 			}
 		}
 		else {
@@ -297,7 +307,7 @@
 					throw Error('Elements has no hasOwnProperty method');
 				}
 				
-				if(elements.hasOwnProperty(index)) {
+				if(elements.hasOwnProperty(index) && check(elements[index], index)) {
 					block(elements[index], index);
 				}
 			}
@@ -322,7 +332,11 @@
 		return callback;
 	}
 	
+	// get an element if tagName is an id, otherwise create the element tagName.
 	function element(tagName, properties) {
+		if (tagName.charAt(0) == '#')
+			return document.getElementById(tagName.substring(1));
+		
 		var el = document.createElement(tagName);
 		if(properties) set(el, properties);
 		return el;
@@ -350,14 +364,7 @@
 		if(typeof node == 'undefined')
 			node = document;
 		
-		switch(selector.charAt(0)) {
-			case '#':
-				return node.getElementById(selector.substr(1));
-			case '.':
-				return node.getElementsByClassName(selector.substr(1));
-			default:
-				return node.getElementsByTagName(selector);
-		}
+		return node.querySelectorAll(selector);
 	}
 	
 	function matches(node, selector) {
@@ -1000,8 +1007,7 @@
 	
 	function patchSidebar()
 	{
-		var sidebar = elements('#sidebar');
-		
+		var sidebar = element('#sidebar');
 		// arrays van maken zodat het niet live nodeList lijstjes worden.
 		var items   = array(elements('.item', sidebar));
 		
@@ -1060,7 +1066,7 @@
 			append(menu, sidebar);
 		});
 		
-		elements('#menu_recent_posts').setTitle('Recente topics');
+		element('#menu_recent_posts').setTitle('Recente topics');
 	}
 	
 	function appendFavoriteStar()
@@ -1082,7 +1088,7 @@
 		if(favoriteEnabledTypes.indexOf(object.type) == -1)
 			return;
 		
-		var title = pick(elements('h1', elements('#content')));
+		var title = pick(elements('#content h1'));
 		
 		var star = Star(object, text(title));
 		
@@ -1092,7 +1098,7 @@
 	function appendFavoritesMenu()
 	{
 		var menu = Menu('menu_favorites', 'Favorieten');
-		elements('#sidebar').add(menu, 1);
+		element('#sidebar').add(menu, 1);
 	
 		var update = function() {
 			menu.clear();
@@ -1114,7 +1120,7 @@
 	function markPosts(forum)
 	{
 		if(!forum)
-			forum = pick(elements('.forum_skalet', elements('#content')));
+			forum = pick(elements('#content .forum_skalet'));
 		
 		if(!forum) return;
 		
@@ -1209,7 +1215,7 @@
 				: 'http://www.phphulp.nl/rss-feed/forum.php', true);
 		request.onload = function()
 		{
-			var menu = elements('#menu_recent_posts');
+			var menu = element('#menu_recent_posts');
 			
 			menu.clear();
 			
@@ -1246,33 +1252,39 @@
 	
 	function insertSearchPlaceholder()
 	{
-		forEach(elements('input'), function(input) {
-			if(input.name == 'q') input.placeholder = 'Zoeken';
-		});
+		forEach(elements('input'), 
+			function(input) { return input.name == 'q' },
+			function(input) { input.placeholder = 'Zoeken' });
 	}
 	
 	function fuckAds()
 	{
-		when(elements('#promo'), remove);
+		// de promo link onder de navigatie boven, naast het zoekvakje
+		when(element('#promo'), remove);
 		
-		when(elements('#delcomment'), hide);
+		when(element('#delcomment'), hide);
 		
-		when(elements('#push'), function(push) {
+		// de, jawel, tower ad
+		when(element('#push'), function(push) {
 			var tower_ad = next('div', push);
 			if(tower_ad && css(tower_ad, 'position') == 'absolute')
 				remove(tower_ad);
 		});
-			
-		when(
-			pick(elements('.forum_msg_content'), function(msg) {
+		
+		// de adsl links
+		forEach(elements('#extras > a[href^="http://"]'), remove);
+
+		// de google berichtjes
+		forEach(
+			elements('.forum_msg_content'),
+			function(msg) {
 				return text(msg) == 'De volgende links passen bij dit bericht:';
-			}),
+			},
 			function(msg) {
 				hide(previous('.forum_msg_author', msg));
 				hide(msg);
 				hide(next('.clearit', msg));
-			}
-		);
+			});
 	}
 	
 	function singleShotForms()
@@ -1319,7 +1331,7 @@
 		
 			update.onmouseout();
 		
-			append(container, elements('#sidebar'));
+			append(container, element('#sidebar'));
 		}
 		
 		notify();
@@ -1358,7 +1370,7 @@
 		
 		var current = Types.identify(document.location.href);
 		
-		var topic = pick(elements('.forum_skalet', elements('#content')));
+		var topic = pick(elements('.forum_skalet', element('#content')));
 		
 		var notice = before(element('p'),
 			   next('h2', last(elements('.forum_msg_author')))
@@ -1481,7 +1493,7 @@
 
 	function debugMenu()
 	{
-		var menu = elements('#extras');
+		var menu = element('#extras');
 		
 		var fireEvent = append(element('a', {'href':'#'}), menu);
 		append(textNode('[Content.markUpdated]'), fireEvent);
@@ -1579,7 +1591,7 @@
 	if(Preferences.get('enable_recent_menu', true))
 		apply(appendRecentMenu) && setInterval(appendRecentMenu, 120 * 1000);
 	
-	if(Preferences.get('disable_ads', false))
+	if(Preferences.get('disable_ads', true))
 		apply(fuckAds);
 	
 	if(Preferences.get('enable_css', true))
